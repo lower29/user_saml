@@ -71,10 +71,7 @@ if($returnScript === true) {
 }
 
 $app = new \OCA\User_SAML\AppInfo\Application();
-$dispatcher = \OC::$server->getEventDispatcher();
-if ($type === 'environment-variable') {
-	$app->registerDavAuth();
-}
+$app->registerDavAuth();
 
 $redirectSituation = false;
 // All requests that are not authenticated and match against the "/login" route are
