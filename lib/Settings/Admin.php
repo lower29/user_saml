@@ -82,6 +82,16 @@ class Admin implements ISettings {
 				'type' => 'line',
 				'required' => true,
 			],
+			'group_mapping' => [
+				'text' => $this->l10n->t('Attribute to map the GIDs to.'),
+				'type' => 'line',
+				'required' => false,
+			],
+			'admin_mapping' => [
+				'text' => $this->l10n->t('GID to treat as NextCloud admins.'),
+				'type' => 'line',
+				'required' => false,
+			],
 			'require_provisioned_account' => [
 				'text' => $this->l10n->t('Only allow authentication if an account exists on some other backend. (e.g. LDAP)'),
 				'type' => 'checkbox',

@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2016 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Richard Lowe <richard.lowe@arkivum.com>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -37,6 +39,18 @@ $samlSettings = new \OCA\User_SAML\SAMLSettings(
 	$config,
 	$request
 );
+
+$groupBackend = new \OCA\User_SAML\GroupBackend(
+	$config,
+	\OC::$server->getSession(),
+	\OC::$server->getDatabaseConnection(),
+	\OC::$server->getGroupManager()
+);
+// The following will work in NextCloud 13 onwards
+//$groupBackend->registerBackends(\OC::$server->getGroupManager()->getBackends());
+//OC_Group::useBackend($groupBackend);
+// ... until then we have to use the following instead
+\OC::$server->getGroupManager()->addBackend($groupBackend);
 
 $userBackend = new \OCA\User_SAML\UserBackend(
 	$config,
