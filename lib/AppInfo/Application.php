@@ -31,6 +31,13 @@ class Application extends App {
 		$container = $this->getContainer();
 
 		/**
+		 * Logger
+		 */
+		$container->registerService('logger', function($c) {
+			return $c->query('ServerContainer')->getLogger();
+		});
+
+		/**
 		 * Middleware
 		 */
 		$container->registerService('OnlyLoggedInMiddleware', function(IAppContainer $c){

@@ -21,7 +21,9 @@
 
 namespace OCA\User_SAML\Controller;
 
+use OCA\User_SAML\Exceptions\NoGroupFoundException;
 use OCA\User_SAML\Exceptions\NoUserFoundException;
+use OCA\User_SAML\GroupBackend;
 use OCA\User_SAML\SAMLSettings;
 use OCA\User_SAML\UserBackend;
 use OCP\AppFramework\Controller;
@@ -42,6 +44,8 @@ class SAMLController extends Controller {
 	private $userSession;
 	/** @var SAMLSettings */
 	private $SAMLSettings;
+	/** @var GroupBackend */
+	private $groupBackend;
 	/** @var UserBackend */
 	private $userBackend;
 	/** @var IConfig */
@@ -59,6 +63,7 @@ class SAMLController extends Controller {
 	 * @param ISession $session
 	 * @param IUserSession $userSession
 	 * @param SAMLSettings $SAMLSettings
+	 * @param GroupBackend $groupBackend
 	 * @param UserBackend $userBackend
 	 * @param IConfig $config
 	 * @param IURLGenerator $urlGenerator
@@ -70,6 +75,7 @@ class SAMLController extends Controller {
 								ISession $session,
 								IUserSession $userSession,
 								SAMLSettings $SAMLSettings,
+								GroupBackend $groupBackend,
 								UserBackend $userBackend,
 								IConfig $config,
 								IURLGenerator $urlGenerator,
@@ -79,6 +85,7 @@ class SAMLController extends Controller {
 		$this->session = $session;
 		$this->userSession = $userSession;
 		$this->SAMLSettings = $SAMLSettings;
+		$this->groupBackend = $groupBackend;
 		$this->userBackend = $userBackend;
 		$this->config = $config;
 		$this->urlGenerator = $urlGenerator;
@@ -108,22 +115,64 @@ class SAMLController extends Controller {
 			$userExists = $this->userManager->userExists($uid);
 			$autoProvisioningAllowed = $this->userBackend->autoprovisionAllowed();
 			if($userExists === true) {
+				$this->logger->notice("SAML user '" . $uid . "' already exists, updating.");
 				if($autoProvisioningAllowed) {
 					$this->userBackend->updateAttributes($uid, $auth);
 				}
-				return;
 			}
 
 			if(!$userExists && !$autoProvisioningAllowed) {
 				throw new NoUserFoundException();
 			} elseif(!$userExists && $autoProvisioningAllowed) {
+				$this->logger->notice("SAML user '" . $uid . "' is new, provisioning.");
 				$this->userBackend->createUserIfNotExists($uid);
 				$this->userBackend->updateAttributes($uid, $auth);
-				return;
+			}
+		} else {
+			throw new NoUserFoundException();
+		}
+
+		$gidForAdmin = $this->config->getAppValue('user_saml', 'general-gid_admin');
+		$this->logger->notice("SAML gid-for-admin: " . $gidForAdmin);
+		$gidMapping = $this->config->getAppValue('user_saml', 'general-gid_mapping');
+		$this->logger->notice("SAML gid-mapping: " . $gidMapping);
+		if(isset($auth[$gidMapping])) {
+			$gids = $auth[$gidMapping];
+			// make sure that valid GIDs are given
+			if (empty($gids)) {
+				$this->logger->error('Gids "' . $gids . '" is not a valid Gids please check your attribute mapping', ['app' => $this->appName]);
+				throw new \InvalidArgumentException('No valid gid given, please check your attribute mapping. Given gids: ' . $gids);
+			}
+
+			// make sure that GIDs is an array
+			if (!is_array($gids)) {
+				$gids = [$gids];
+			}
+
+			// Iterate through groups, creating if allowed and neccessary
+			foreach ($gids as $gid) {
+				if($autoProvisioningAllowed) {
+					$this->groupBackend->createGroup($gid);
+				} else {
+					throw new NoGroupFoundException();
+				}
+			}
+
+			// Set the group membership for the user to the given groups
+			if($autoProvisioningAllowed) {
+				$this->groupBackend->setGroupMembership($uid, $gids,
+					in_array($gidForAdmin, $gids));
+				$user = $this->userManager->get($uid);
+				if(in_array($gidForAdmin, $gids)) {
+					$this->logger->notice("SAML setting '" . $uid . "' as admin.");
+					$this->groupBackend->setAdmin($user, true);
+				} else{
+					$this->logger->notice("SAML unsetting '" . $uid . "' as admin.");
+					$this->groupBackend->setAdmin($user, false);
+				}
 			}
 		}
 
-		throw new NoUserFoundException();
 	}
 
 	/**

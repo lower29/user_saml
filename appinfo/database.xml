@@ -7,6 +7,41 @@
 	<charset>utf8</charset>
 
 	<table>
+		<name>*dbprefix*user_saml_groups</name>
+		<declaration>
+			<field>
+				<name>gid</name>
+				<type>text</type>
+				<default></default>
+				<notnull>true</notnull>
+				<length>64</length>
+			</field>
+		</declaration>
+	</table>
+
+	<table>
+		<name>*dbprefix*user_saml_group_user</name>
+		<declaration>
+			<field>
+				<name>gid</name>
+				<type>text</type>
+				<default></default>
+				<notnull>true</notnull>
+				<length>64</length>
+			</field>
+
+			<!-- Foreign Key users::uid -->
+			<field>
+				<name>uid</name>
+				<type>text</type>
+				<default></default>
+				<notnull>true</notnull>
+				<length>64</length>
+			</field>
+		</declaration>
+	</table>
+
+	<table>
 		<name>*dbprefix*user_saml_users</name>
 		<declaration>
 			<field>
